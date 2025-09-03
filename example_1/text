@@ -1,0 +1,376 @@
+https://habr.com/ru/articles/240509/
+
+Один из самых простых способов заставить контейнер говорить и показывать — это дать ему доступ к нашему экрану и звуковым устройствам.
+
+Для того, чтобы приложения в контейнере могли подключиться к нашему экрану можно воспользоваться доменными сокетами Unix для X11, которые, обычно, лежать в директории /tmp/.X11-unix. Сокеты можно расшарить, смонтировав эту директорию с помощью параметра -v. Также необходимо настроить переменную окружения DISPLAY, которая указывает приложениям экран для вывода графики. Так как выводить мы будем на наш экран, то достаточно скопировать значение DISPLAY хостовой машины. Обычно, это :0.0 или просто :0. Пустое имя хоста (перед двоеточием) подразумевает локальное соединение с использованием самого эффективного транспорта, что в большинстве случаев означает доменные сокеты Unix — как раз то, что нам нужно:
+
+$ docker run -e DISPLAY=unix$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix <image>
+
+Приставка «unix» к DISPLAY здесь для явного указания использования unix-сокетов, но чаще всего в этом нет необходимости.
+
+Ошибка авторизации
+
+При запуске можно столкнуться с ошибкой вида:
+
+No protocol specified
+Error: cannot open display: unix:0.0
+
+Такое происходит, когда расширение Xsecurity блокирует неавторизованные подключения к X-серверу. Решить эту проблему можно, например, разрешив все локальные несетевые подключения:
+
+$ xhost +local:
+
+Или ограничиться разрешением только для root-пользователя:
+
+$ xhost +si:localuser:root
+
+В большинстве случаев этого должно быть достаточно.
+
+Подключение звуковых устройств также не составляет большого труда. В версиях Docker до 1.2 их можно смонтировать с помощью параметра -v, при этом контейнер должен быть запущен в привилегированном режиме:
+
+$ docker run -v /dev/snd:/dev/snd --privileged <image>
+
+В Docker 1.2 был добавлен специальный параметр --device для подключения устройств. К сожалению, на данный момент (версия 1.2), --device в качестве значения может принимать только одно устройство за раз, а значит придется явно перечислять их все. Например:
+
+$ docker run --device=/dev/snd/controlC0 --device=/dev/snd/pcmC0D0p --device=/dev/snd/seq --device=/dev/snd/timer <image>
+
+Суммируя, команда для запуска контейнера с графическим приложением выглядит примерно так:
+
+$ docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY \
+    --device=/dev/snd/controlC0 --device=/dev/snd/pcmC0D0p \
+    --device=/dev/snd/seq --device=/dev/snd/timer <image>
+
+
+Или, для Docker версии ниже 1.2:
+
+$ docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY \
+    -v /dev/snd:/dev/snd --privileged <image>
+    
+Пример №1
+
+Я подумал, что для проверки графики и звука подойдет какой-нибудь аудиоплеер с графическим интерфейсом и выбрал DeaDBeeF в качестве подопытного. Для запуска нам не понадобиться ничего, кроме образа с установленным плеером.
+
+Dockerfile:
+
+FROM debian:wheezy
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update
+
+RUN apt-get install -yq wget
+
+# установка deadbeef
+RUN wget -P /tmp 'http://sourceforge.net/projects/deadbeef/files/debian/0.6.2/deadbeef-static_0.6.2-2_amd64.deb' \
+ && dpkg -i /tmp/deadbeef-static_0.6.2-2_amd64.deb || true \
+ && apt-get install -fyq --no-install-recommends \
+ && ln -s /opt/deadbeef/bin/deadbeef /usr/local/bin/deadbeef \
+ && rm /tmp/deadbeef-static_0.6.2-2_amd64.deb
+
+# будем запускать проигрыватель вместе с контейнером
+ENTRYPOINT ["/opt/deadbeef/bin/deadbeef"]
+
+
+Соберем образ:
+
+$ docker build -t deadbeef .
+
+
+Теперь можно запустить его и послушать, например, радио (если решите попробовать — учтите, что плеер запустится на полной громкости):
+
+$ docker run --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY \
+    --device=/dev/snd/controlC0 --device=/dev/snd/pcmC0D0p --device=/dev/snd/seq --device=/dev/snd/timer \
+    deadbeef http://94.25.53.133/ultra-128.mp3
+
+Результатом должен стать работающий плеер    
+    
+    
+SSH -X
+
+И это все, что вам нужно! Ну, почти. Параметр -X при создании ssh соединения включает перенаправление X11, что позволяет отображать на локальной машине графическое приложение, запущенное на удаленной. В данном случае под удаленной машиной можно понимать docker-контейнер.
+
+В контейнере при этом должен быть установлен и запущен ssh-сервер. Также следует удостовериться, что в настройках сервера разрешено перенаправление X11. Проверить это можно заглянув в /etc/ssh/sshd_config и поискав параметр X11Forwarding (или его синонимы: ForwardX11, AllowX11Forwarding), который должен быть установлен в yes:
+
+X11Forwarding yes    
+    
+А звук?
+
+В ssh нет «волшебной» опции для перенаправления звука. Но настроить его все-таки возможно. Например, с помощью звукового сервера PulseAudio, для которого можно разрешить клиентский доступ «извне» (например, из контейнера). Проще всего это сделать через paprefs. Установив paprefs надо зайти в настройки PulseAudio и на вкладке «Network Settings» поставить галочку напротив «Enable network access to local sound devices» (включение сетевого доступа к локальным звуковым устройствам). Там же можно найти опцию «Don't require authentication» (не требовать авторизации). Включение этой опции разрешит неавторизованный доступ к серверу, что может упростить настройку docker-контейнеров. Для авторизованного же доступа необходимо скопировать в контейнер файл ~/.pulse-cookie.
+
+После изменения настроек PulseAudio следует перезапустить:
+
+$ sudo service pulseaudio restart
+
+или
+
+$ pulseaudio -k && pulseaudio --start
+
+
+В некоторых случаях может потребоваться перезагрузка. Проверить принялись ли настройки можно с помощью команды pax11publish, вывод которой должен выглядеть примерно так:
+
+Server: <...>unix:/run/user/1000/pulse/native tcp:<hostname>:4713 tcp6:<hostname>:4713
+Cookie: <...>
+
+
+Здесь можно увидеть, что аудиосервер «слушает» на unix-сокете (unix:/run/user/1000/pulse/native), 4713-м TCP и TCP6 портах (стандартный порт для PulseAudio).
+
+Для того, чтобы X-приложения в контейнере подключались к нашему pulse-серверу нужно указать его адрес в переменной окружения PULSE_SERVER:
+
+$ PULSE_SERVER=tcp:172.17.42.1:4713
+
+
+Здесь «172.17.42.1» — это адрес моего docker-хоста. Узнать этот адрес можно, например, так:
+
+$ ip route | awk '/docker/ { print $NF }'
+172.17.42.1
+
+
+То есть строка «tcp:172.17.42.1:4713» говорит, что подключиться к pulse-серверу можно по IP-адресу 172.17.42.1, где он слушает TCP-порт 4713.
+
+В общем случае такой настройки достаточно. Отмечу только, что при использовании вышеописанного метода весь звук будет передаваться в открытом виде (нешифрованном), что в случае использования контейнера на локальном компьютере не имеет особого значения. Но при желании этот трафик можно и зашифровать. Для этого PULSE_SERVER следует настроить на любой свободный порт на localhost (например: «tcp:localhost:64713»). В результате аудиопоток будет идти на локальный порт 64713, который в свою очередь можно пробросить на 4713-й порт хостовой машины с помощью ssh -R:
+
+$ ssh -X -R 64713:localhost:4713 <user>@<hostname>
+
+
+Аудиоданные при этом будут передаваться по зашифрованному каналу.
+
+Пример №2
+
+Как и в предыдущем примере опишем образ плеера DeaDBeF c ssh-сервером. Я буду исходить из того, что все описанные выше предварительные настройки PulseAudio проведены, а значит остается только приступить к созданию docker-образа.
+
+Код установки плеера будет повторят код из примера ранее. Нам лишь остается добавить установку openssh-сервера.
+
+На этот раз кроме Dockerfile создадим еще один файл — entrypoint.sh. Это скрипт для «точки входа», т.е. он будет выполняться каждый раз при запуске контейнера. В нем мы будем создавать пользователя со случайным паролем, настраивать переменную окружения PULSE_SERVER и запускать ssh-сервер.
+
+Dockerfile:
+
+FROM debian:wheezy
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update
+
+RUN apt-get install -yq wget
+
+# установка deadbeef
+RUN wget -P /tmp 'http://sourceforge.net/projects/deadbeef/files/debian/0.6.2/deadbeef-static_0.6.2-2_amd64.deb' \
+ && dpkg -i /tmp/deadbeef-static_0.6.2-2_amd64.deb || true \
+ && apt-get install -fyq --no-install-recommends \
+ && ln -s /opt/deadbeef/bin/deadbeef /usr/local/bin/deadbeef \
+ && rm /tmp/deadbeef-static_0.6.2-2_amd64.deb
+
+# минимальная установка pulseaudio
+RUN apt-get install -yq --no-install-recommends pulseaudio
+
+RUN apt-get install -yq \
+      pwgen \
+      openssh-server
+
+# создаем директорию необходимую для запуска ssh-сервера
+RUN mkdir -p /var/run/sshd
+
+ADD entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 22
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+
+Порт и адрес pulse-сервера будем передавать в качестве параметров при запуске контейнера, чтобы иметь возможность поменять их на нестандартные (не забыв о значениях по умолчанию).
+
+entrypoint.sh:
+
+#!/bin/bash
+
+# формируем переменную окружения PULSE_SERVER
+PA_PORT=${PA_PORT:-4713}
+PA_HOST=${PA_HOST:-localhost}
+PA_SERVER="tcp:$PA_HOST:$PA_PORT"
+
+# имя пользователя для подключения
+DOCKER_USER=dockerx
+
+# генерируем пароль пользователя
+DOCKER_PASSWORD=$(pwgen -c -n -1 12)
+DOCKER_ENCRYPTED_PASSWORD=$(perl -e 'print crypt('"$DOCKER_PASSWORD"', "aa")')
+
+# выводим имя и пароль пользователя,
+# чтобы их можно было увидеть с помощью docker logs
+echo User: $DOCKER_USER
+echo Password: $DOCKER_PASSWORD
+
+# создаем пользователя
+useradd --create-home --home-dir /home/$DOCKER_USER --password $DOCKER_ENCRYPTED_PASSWORD \
+        --shell /bin/bash --user-group $DOCKER_USER
+
+# добавляем инициализацию и экспорт PULSE_SERVER в ~/.profile для нового пользователя,
+# чтобы она была доступна во время его сессии
+echo "PULSE_SERVER=$PA_SERVER; export PULSE_SERVER" >> /home/$DOCKER_USER/.profile
+
+# запускаем ssh-сервер
+exec /usr/sbin/sshd -D
+
+
+Соберем образ:
+
+$ docker build -t deadbeef:ssh .
+
+
+Запустим контейнер, не забыв указать хост PulseAudio (порт я опущу, так как у меня он стандартный), и назовем его «dead_player»:
+
+$ docker run -d -p 2222:22 -e PA_HOST="172.17.42.1" --name=dead_player deadbeef:ssh
+
+
+Узнать пароль пользователя для подключения можно с помощью команды docker logs:
+
+$ docker logs dead_player
+User: dockerx
+Password: vai0ay7OuNga
+
+
+Для подключения по ssh можно использовать адрес как самого контейнера, так и адрес docker-хоста (при этом порт подключения будет отличаться от стандартного 22-го; в данном случае это будет 2222 — тот, который мы указали при запуске контейнера). Узнать IP контейнера можно с помощью команды docker inspect:
+
+$ docker inspect --format '{{ .NetworkSettings.IPAddress }}' dead_player
+172.17.0.69
+
+
+Подключение к контейнеру:
+
+$ ssh -X dockerx@172.17.0.69
+
+
+Или через docker-шлюз:
+
+$ ssh -X -p 2222 dockerx@172.17.42.1
+
+
+Наконец, после авторизации, можно расслабиться и послушать музыку:
+
+dockerx@5e3add235060:~$ deadbeef
+
+Subuser
+
+Subuser позволяет запускать программы в изолированных контейнерах docker, беря на себя всю работу, связанную с созданием и настройкой контейнеров, поэтому пользоваться им могут даже люди, ничего не знающие о docker. Во всяком случае, такова идея проекта. Для каждого приложения-контейнера при этом устанавливаются ограничения в зависимости от его назначения — ограниченный доступ к директориям хоста, к сети, звуковым устройствам и т.д. По сути, subuser реализует удобную обертку над описанным здесь первым способом запуска графических приложений, так как запуск осуществляется с помощью монтирования нужных директорий, устройств и т.д.
+
+К каждому создаваемому образу прилагается файл permissions.json, который определяет настройки доступа для приложения. Так, например, выглядит этот файл для образа vim:
+
+{
+  "description"                : "Simple universal text editor."
+  ,"maintainer"                : "Timothy Hobbs <timothyhobbs (at) seznam dot cz>"
+  // Путь к исполняемому файлу внутри контейнера
+  ,"executable"                : "/usr/bin/vim"
+  // Список директорий, к которым программа должна иметь доступ с правами на чтение/запись
+  // Пути задаются относительно вашей домашней директории. Например: "Downloads" преобразуется в "$HOME/Downloads"
+  ,"user-dirs"                 : [ 'Downloads', 'Documents' ]  // По умолчанию: []
+  // Разрешить программе создавать X11 окна
+  ,"x11"                       : true       // По умолчанию: false
+  // Разрешить программе использовать вашу звуковую карту и устройства записи
+  ,"sound-card"                : true       // По умолчанию: false
+  // Дать программе доступ к директории, из которой она была запущена с правами на чтение/запись
+  ,"access-working-directory"  : true       // По умолчанию: false
+  // Дать программе доступ к интернету
+  ,"allow-network-access"      : true       // По умолчанию: false
+}
+
+
+Subuser имеет репозиторий (на данный момент — небольшой) готовых приложений, список которых можно увидеть с помощью команды:
+
+$ subuser list available
+
+
+Добавить приложение из репозитория можно так:
+
+$ subuser subuser add firefox-flash firefox-flash@default
+
+
+Эта команда установит приложение, назвав его firefox-flash, основанное на одноименном образе из репозитория по умолчанию.
+
+Запуск приложения выглядит так:
+
+$ subuser run firefox-flash
+
+
+Кроме использования стандартного репозитория, можно создавать и добавлять свои собственные subuser-приложения.
+
+Проект довольно молодой и пока выглядит сыроватым, но свою задачу он выполняет. Код проекта можно найти на github: subuser-security/subuser
+
+Пример №3
+
+Создадим, subuser-приложение для все того же DeaDBeef. Для демонстрации создадим локальный репозиторий subuser (ни что иное как git-репозиторий). Директория ~/.subuser-repo сойдет. В ней следует инициализировать git-репозиторий:
+
+$ mkdir ~/.subuser-repo
+$ cd ~/.subuser-repo
+$ git init
+
+
+Здесь же создадим директорию для DeaDBeef:
+
+$ mkdir deadbeef
+
+
+Структура директории для subuser-образа выглядит следующим образом:
+
+image-name/
+  docker-image/
+    SubuserImagefile
+    docker-build-context...
+  permissions.json
+
+
+SubuserImagefile — это тот же Dockerfile. Разница лишь в возможности использовать инструкцию FROM-SUBUSER-IMAGE, которая принимает идентификатор существующего subuser-образа в качестве аргумента. Список доступных базовых образов можно посмотреть здесь: SubuserBaseImages.
+
+Итак, подготовив структуру каталога, остается создать два файла: SubuserImagefile и permissions.json.
+
+SubuserImagefile практически ничем не будет отличаться от приведенного ранее Dockerfile:
+
+FROM debian:wheezy
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update
+
+RUN apt-get install -yq wget
+
+# установка deadbeef
+RUN wget -P /tmp 'http://sourceforge.net/projects/deadbeef/files/debian/0.6.2/deadbeef-static_0.6.2-2_amd64.deb' \
+ && dpkg -i /tmp/deadbeef-static_0.6.2-2_amd64.deb || true \
+ && apt-get install -fyq --no-install-recommends \
+ && ln -s /opt/deadbeef/bin/deadbeef /usr/local/bin/deadbeef \
+ && rm /tmp/deadbeef-static_0.6.2-2_amd64.deb
+
+
+В permissions.json опишем параметры доступа для нашего плеера. Нам понадобиться экран, звук и интернет:
+
+{
+ "description": "Ultimate Music Player For GNU/Linux",
+ "maintainer": "Humble Me",
+ "executable": "/opt/deadbeef/bin/deadbeef",
+ "sound-card": true,
+ "x11": true,
+ "user-dirs": [
+  "Music"
+ ],
+ "allow-network-access": true,
+ "as-root": true
+}
+
+
+Параметр as-root позволяет запускать приложения в контейнере от имени root. По умолчанию subuser запускает контейнер с параметром --user, присваивая ему идентификатор текущего пользователя. Но deadbeef при этом отказывается запускаться (не может создать сокет-файл в домашней директории, которой не существует).
+
+Закоммитим изменения в нашем импровизированном subuser-репозитории:
+
+~/.subuser-repo $ git add . && git commit -m 'initial commit'
+
+
+Теперь можно установить плеер из локального репозитория:
+
+$ subuser subuser add deadbeef deadbeef@file:////home/silentvick/.subuser-repo
+
+
+Наконец, запустить его можно с помощью следующей команды:
+
+$ subuser run deadbeef
+
+
+    
+
