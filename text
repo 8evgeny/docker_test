@@ -77,11 +77,7 @@ $ docker build -t deadbeef .
 
 Теперь можно запустить его и послушать, например, радио (если решите попробовать — учтите, что плеер запустится на полной громкости):
 
-$ docker run --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY \
-    --device=/dev/snd/controlC0 --device=/dev/snd/pcmC0D0p --device=/dev/snd/seq --device=/dev/snd/timer \
-    deadbeef http://94.25.53.133/ultra-128.mp3
-
-docker run --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY  \
+docker run --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix  \
 -v /dev/snd/controlC0:/dev/snd/controlC0 \
 -v /dev/snd/pcmC0D0p:/dev/snd/pcmC0D0p \
 -v /dev/snd/seq:/dev/snd/seq \
