@@ -60,11 +60,11 @@ RUN apt-get update
 RUN apt-get install -yq wget
 
 # установка deadbeef
-RUN wget -P /tmp 'http://sourceforge.net/projects/deadbeef/files/debian/0.6.2/deadbeef-static_0.6.2-2_amd64.deb' \
- && dpkg -i /tmp/deadbeef-static_0.6.2-2_amd64.deb || true \
+RUN wget -P /tmp 'https://master.dl.sourceforge.net/project/deadbeef/travis/linux/1.8.2/deadbeef-static_1.8.2-1_amd64.deb' \
+ && dpkg -i /tmp/deadbeef-static_1.8.2-1_amd64.deb || true \
  && apt-get install -fyq --no-install-recommends \
  && ln -s /opt/deadbeef/bin/deadbeef /usr/local/bin/deadbeef \
- && rm /tmp/deadbeef-static_0.6.2-2_amd64.deb
+ && rm /tmp/deadbeef-static_1.8.2-1_amd64.deb
 
 # будем запускать проигрыватель вместе с контейнером
 ENTRYPOINT ["/opt/deadbeef/bin/deadbeef"]
@@ -89,8 +89,7 @@ docker run --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY  \
 -v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
 --privileged \
 deadbeef \
-http://94.25.53.133/ultra-128.mp3
-
+http://icepe6.infomaniak.ch:80/jazz-wr01-128.mp3
 
 
 Результатом должен стать работающий плеер    
