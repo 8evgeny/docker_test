@@ -89,6 +89,8 @@ docker run --rm -e DISPLAY=$DISPLAY \
 deadbeef \
 http://icepe6.infomaniak.ch:80/jazz-wr01-128.mp3
 
+docker run --rm  -it deadbeef 
+
 
 Результатом должен стать работающий плеер    
     

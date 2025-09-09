@@ -1,0 +1,12 @@
+docker build -D -t qtcreator /home/user/WORK/docker_test/test_qtcreator/
+xhost +   (Без этого не работало !!!)
+
+docker run --rm -e DISPLAY=$DISPLAY \
+-v /tmp/.X11-unix:/tmp/.X11-unix  \
+-v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
+--net=host \
+--privileged \
+qtcreator 
+
+Работает !!!
+

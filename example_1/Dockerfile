@@ -1,9 +1,9 @@
 #FROM debian:12.11
-FROM ubuntu:20.10
-#FROM ubuntu:22.04
+#FROM ubuntu:20.10
+FROM ubuntu:22.04
 #FROM ubuntu
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt update 
 RUN apt install -y sudo 
