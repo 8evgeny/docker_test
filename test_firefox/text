@@ -1,0 +1,21 @@
+
+Соберем образ:
+
+$ docker build -t firefox_debian12 .
+
+
+Теперь можно запустить его и послушать, например, радио (если решите попробовать — учтите, что плеер запустится на полной громкости):
+
+docker run --rm -e DISPLAY=$DISPLAY \
+-v /tmp/.X11-unix:/tmp/.X11-unix  \
+--device=/dev/snd/controlC0 \
+--device=/dev/snd/pcmC0D0p \
+--device=/dev/snd/seq \
+--device=/dev/snd/timer \
+-v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
+--net=host \
+--privileged \
+firefox_debian12 
+
+    
+

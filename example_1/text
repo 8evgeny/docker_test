@@ -79,10 +79,10 @@ $ docker build -t deadbeef .
 
 docker run --rm -e DISPLAY=$DISPLAY \
 -v /tmp/.X11-unix:/tmp/.X11-unix  \
--v /dev/snd/controlC0:/dev/snd/controlC0 \
--v /dev/snd/pcmC0D0p:/dev/snd/pcmC0D0p \
--v /dev/snd/seq:/dev/snd/seq \
--v /dev/snd/timer:/dev/snd/timer \
+--device=/dev/snd/controlC0 \
+--device=/dev/snd/pcmC0D0p \
+--device=/dev/snd/seq \
+--device=/dev/snd/timer \
 -v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
 --net=host \
 --privileged \
@@ -93,7 +93,26 @@ docker run --rm  -it deadbeef
 
 
 Результатом должен стать работающий плеер    
+
+Картинка есть  нет звука
+Сообщение:
+        plugin converter_gtk3.so not found or failed to load
+        plugin pltbrowser_gtk3.so not found or failed to load
+        plugin pulse.so not found or failed to load
+        plugin shellexecui_gtk3.so not found or failed to load
     
+docker run --rm -e DISPLAY=$DISPLAY \
+-v /tmp/.X11-unix:/tmp/.X11-unix  \
+-v /dev/snd/controlC0:/dev/snd/controlC0 \
+-v /dev/snd/pcmC0D0p:/dev/snd/pcmC0D0p \
+-v /dev/snd/seq:/dev/snd/seq \
+-v /dev/snd/timer:/dev/snd/timer \
+-v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
+--net=host \
+--privileged \
+deadbeef_debian12 \
+http://icepe6.infomaniak.ch:80/jazz-wr01-128.mp3
+
     
 SSH -X
 

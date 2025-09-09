@@ -1,6 +1,13 @@
-FROM ubuntu:22.04
 
-RUN apt update && apt install -y mc 
-RUN apt install qtcreator
+FROM debian:12.11
 
-#CMD ["qtcreator"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update
+RUN apt-get install -y mc 
+RUN apt-get install -y firefox
+
+
+# будем запускать проигрыватель вместе с контейнером
+ENTRYPOINT ["firefox"]

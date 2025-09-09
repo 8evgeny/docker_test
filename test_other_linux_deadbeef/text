@@ -1,0 +1,32 @@
+
+Соберем образ:
+
+$ docker build -t deadbeef_debian6 .
+
+
+Теперь можно запустить его и послушать, например, радио (если решите попробовать — учтите, что плеер запустится на полной громкости):
+
+docker run --rm -e DISPLAY=$DISPLAY \
+-v /tmp/.X11-unix:/tmp/.X11-unix  \
+--device=/dev/snd/controlC0 \
+--device=/dev/snd/pcmC0D0p \
+--device=/dev/snd/seq \
+--device=/dev/snd/timer \
+-v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
+--net=host \
+--privileged \
+deadbeef_debian7 \
+http://icepe6.infomaniak.ch:80/jazz-wr01-128.mp3
+
+debian6
+ALSA lib pcm_dmix.c:1018:(snd_pcm_dmix_open) unable to open slave
+could not open audio device (Device or resource busy)
+
+debian7
+plugin converter_gtk3.so not found or failed to load
+plugin pltbrowser_gtk3.so not found or failed to load
+plugin pulse.so not found or failed to load
+plugin shellexecui_gtk3.so not found or failed to load
+
+    
+
