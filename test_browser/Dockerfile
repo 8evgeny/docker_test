@@ -6,8 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update
 RUN apt-get install -y mc 
-RUN apt-get install -y firefox
+RUN apt-get install -y chromium
 
 
 # будем запускать проигрыватель вместе с контейнером
-ENTRYPOINT ["firefox"]
+ENTRYPOINT ["chromium"]
