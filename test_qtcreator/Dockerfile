@@ -12,5 +12,5 @@ RUN apt install -y qtcreator
 
 #RUN xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f /tmp/.docker.Xauthority nmerge -
 
-# будем запускать проигрыватель вместе с контейнером
+# будем запускать вместе с контейнером
 ENTRYPOINT ["qtcreator"]

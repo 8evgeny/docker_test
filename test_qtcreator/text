@@ -1,4 +1,4 @@
-docker build -D -t qtcreator /home/user/WORK/docker_test/test_qtcreator/
+docker build -D -t qtcreator /home/NETAC/github/docker_test/test_qtcreator/
 xhost +   (Без этого не работало !!!)
 
 docker run --rm -e DISPLAY=$DISPLAY \
