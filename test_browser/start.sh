@@ -1,8 +1,4 @@
-
-Соберем образ:
-
-$ docker build -t chromium_debian12 /media/user/WORK/Github/docker_test/test_browser/
-
+#!/bin/bash
 xhost +
 
 docker run --rm -e DISPLAY=$DISPLAY \
@@ -10,6 +6,3 @@ docker run --rm -e DISPLAY=$DISPLAY \
 -v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
 --net=host \
 --privileged chromium_debian12 --no-sandbox
-
-    
-
