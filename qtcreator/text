@@ -1,0 +1,16 @@
+<<<<<<< Updated upstream:test_qtcreator/text
+docker build -D -t qtcreator /home/NETAC/github/docker_test/test_qtcreator/
+=======
+docker build -D -t qtcreator /media/user/WORK/docker_test/qtcreator/
+>>>>>>> Stashed changes:qtcreator/text
+xhost +   (Без этого не работало !!!)
+
+docker run --rm -e DISPLAY=$DISPLAY \
+-v /tmp/.X11-unix:/tmp/.X11-unix  \
+-v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
+--net=host \
+--privileged \
+qtcreator 
+
+Работает !!!
+

@@ -1,0 +1,18 @@
+
+Соберем образ:
+
+$ docker build -t chromium_debian12 /media/user/WORK/docker_test/chromium_12/
+
+xhost +
+
+docker run --rm -e DISPLAY=$DISPLAY \
+-v /tmp/.X11-unix:/tmp/.X11-unix  \
+-v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
+--net=host \
+--privileged \
+--name chromium \
+chromium_debian12 --no-sandbox
+
+docker commit chromium chromium_debian12:2
+Прописываем в файле start.sh chromium_debian12:2   и т далее      
+
