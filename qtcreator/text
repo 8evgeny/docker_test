@@ -1,16 +1,48 @@
-<<<<<<< Updated upstream:test_qtcreator/text
-docker build -D -t qtcreator /home/NETAC/github/docker_test/test_qtcreator/
-=======
-docker build -D -t qtcreator /media/user/WORK/docker_test/qtcreator/
->>>>>>> Stashed changes:qtcreator/text
+
+
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV QT_QPA_PLATFORM=xcb
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+RUN apt-get update && apt-get install -y \
+    qtcreator \
+    build-essential \
+    cmake \
+    ninja-build \
+    git \
+    gdb \
+    qt6-base-dev \
+    qt6-tools-dev \
+    libxcb-xinerama0 \
+    libxcb-cursor0 \
+    libxkbcommon-x11-0 \
+    xauth \
+    dbus-x11 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+CMD ["qtcreator"]
+
+
+docker build -t qtcreator-container .
+  
 xhost +   (Без этого не работало !!!)
 
-docker run --rm -e DISPLAY=$DISPLAY \
--v /tmp/.X11-unix:/tmp/.X11-unix  \
--v /tmp/.docker.Xauthority -e XAUTHORITY=/tmp/.docker.Xauthority \
---net=host \
---privileged \
-qtcreator 
+docker run --rm -it \
+  --name qtcreator \
+  -e DISPLAY=$DISPLAY \
+  -e QT_X11_NO_MITSHM=1 \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v "$PWD":/workspace \
+  -v "$HOME/.config/QtProject":/root/.config/QtProject \
+  -v "$HOME/.cache":/root/.cache \
+  --device /dev/dri \
+  qtcreator-container
 
 Работает !!!
 
