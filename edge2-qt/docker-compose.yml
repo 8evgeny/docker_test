@@ -1,0 +1,19 @@
+services:
+  edge2-qt-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: edge2-qt-dev:22.04
+    container_name: edge2-qt-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./app:/src
+      - ./sysroot:/opt/sysroot:ro
+      - ./toolchain-edge2.cmake:/toolchain-edge2.cmake:ro
+      - ccache:/root/.cache/ccache
+    environment:
+      QT_HOST_PATH: /usr/lib/x86_64-linux-gnu/qt6
+
+volumes:
+  ccache:
