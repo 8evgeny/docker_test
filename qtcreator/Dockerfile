@@ -1,27 +1,52 @@
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
+# Отключаем интерактивные диалоги apt
 ENV DEBIAN_FRONTEND=noninteractive
-ENV QT_QPA_PLATFORM=xcb
-ENV LANG=C.UTF-8
-ENV LC_ALL=C.UTF-8
 
+# Устанавливаем зависимости для сборщика, компилятора и утилиты aqt
 RUN apt-get update && apt-get install -y \
-    qtcreator \
     build-essential \
     cmake \
     ninja-build \
-    git \
-    gdb \
-    qt6-base-dev \
-    qt6-tools-dev \
-    libxcb-xinerama0 \
-    libxcb-cursor0 \
+    python3 \
+    python3-pip \
+    libgl1-mesa-dev \
     libxkbcommon-x11-0 \
-    xauth \
-    dbus-x11 \
-    && rm -rf /var/lib/apt/lists/*
+    libegl1-mesa \
+    libdbus-1-3 \
+    && rm -rf /var/list/apt/lists/*
 
-WORKDIR /workspace
+# Устанавливаем aqtinstall через pip
+RUN pip3 install aqtinstall
 
-CMD ["qtcreator"]
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-setuptools \
+    libgl1-mesa-dev \
+    libxkbcommon-x11-0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render-util0 \
+    libxcb-xinerama0 \
+    libxcb-xinput0 \
+    libxcb-xfixes0 \
+    libxcb-shape0 \
+    curl \
+    ca-certificates \
+    mc
+
+# Скачиваем и устанавливаем конкретную версию Qt (например, 6.5.3 для Linux Desktop)
+# Параметры: <версия> <ос> <архитектура>
+
+#тут требуется VPN
+RUN aqt install-qt linux desktop 6.5.3 gcc_64 --outputdir /opt/qt
+
+# Настраиваем переменные окружения, чтобы система видела Qt
+ENV PATH="/opt/qt/6.5.3/gcc_64/bin:${PATH}"
+ENV QT_DIR="/opt/qt/6.5.3/gcc_64"
+
+WORKDIR /app
   
