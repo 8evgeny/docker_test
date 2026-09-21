@@ -8,5 +8,5 @@ docker run --rm -e DISPLAY=$DISPLAY \
 --net=host \
 --privileged \
 --name chromium \
-chromium_12:14_09_2026 --no-sandbox
+chromium:latest --no-sandbox
 

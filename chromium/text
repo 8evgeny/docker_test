@@ -13,6 +13,10 @@ docker run --rm -e DISPLAY=$DISPLAY \
 --name chromium \
 chromium_debian12 --no-sandbox
 
+alias chrom='cd /media/user/WORK/docker_test/chromium && screen ./run > /dev/null &'
+alias chrom_commit='docker commit chromium chromium'
+
+
 docker commit chromium chromium_debian12:2
 Прописываем в файле start.sh chromium_debian12:2   и т далее      
 
